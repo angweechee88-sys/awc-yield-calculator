@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AWC Yield Calculator</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --gold: #C9A84C; --gold-light: #E8C96A; --gold-dim: rgba(201,168,76,0.15);
+  --bg: #0B0D0F; --surface: #111316; --surface2: #181B1F;
+  --border: rgba(201,168,76,0.2); --text: #F0EBE0; --muted: #6B6760;
+  --green: #4CAF7D; --green-dim: rgba(76,175,125,0.12);
+  --red: #E07070; --red-dim: rgba(180,60,60,0.12); --red-border: rgba(220,80,80,0.3);
+}
+body {
+  background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif;
+  min-height: 100vh; display: flex; align-items: flex-start; justify-content: center;
+  padding: 40px 20px; position: relative; overflow-x: hidden;
+}
+body::before {
+  content: ''; position: fixed; top: -40%; left: -20%; width: 70%; height: 70%;
+  background: radial-gradient(ellipse, rgba(201,168,76,0.06) 0%, transparent 70%);
+  pointer-events: none;
+}
+body::after {
+  content: ''; position: fixed; bottom: -30%; right: -10%; width: 50%; height: 60%;
+  background: radial-gradient(ellipse, rgba(76,175,125,0.05) 0%, transparent 70%);
+  pointer-events: none;
+}
+.wrapper { width: 100%; max-width: 680px; animation: fadeUp 0.7s ease both; }
+@keyframes fadeUp { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:translateY(0); } }
+
+.header { margin-bottom: 36px; text-align: center; }
+.badge {
+  display: inline-block; font-family: 'DM Mono', monospace; font-size: 10px;
+  letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold);
+  border: 1px solid var(--border); padding: 5px 14px; border-radius: 2px;
+  margin-bottom: 16px; background: var(--gold-dim);
+}
+h1 { font-family: 'Playfair Display', serif; font-size: clamp(26px,5vw,40px); font-weight: 700; line-height: 1.15; color: var(--text); letter-spacing: -0.02em; }
+h1 span { color: var(--gold); }
+.subtitle { font-size: 13px; color: var(--muted); margin-top: 8px; font-weight: 300; }
+
+.card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 4px;
+  padding: 32px; position: relative; overflow: hidden;
+}
+.card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent); opacity: 0.6;
+}
+
+.field-block { margin-bottom: 28px; padding-bottom: 28px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.field-block:last-of-type { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+
+.label-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.field-label { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--gold); font-weight: 500; }
+.reset-btn {
+  font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--muted); background: none;
+  border: 1px solid rgba(255,255,255,0.08); border-radius: 2px; padding: 3px 8px;
+  cursor: pointer; transition: color 0.2s, border-color 0.2s;
+}
+.reset-btn:hover { color: var(--gold); border-color: var(--border); }
+
+.input-wrap { position: relative; display: flex; align-items: center; margin-bottom: 12px; }
+.prefix, .suffix { position: absolute; font-family: 'DM Mono', monospace; font-size: 13px; color: var(--muted); pointer-events: none; font-weight: 300; }
+.prefix { left: 14px; } .suffix { right: 14px; }
+input[type="number"] {
+  width: 100%; background: var(--surface2); border: 1px solid rgba(201,168,76,0.15);
+  border-radius: 3px; color: var(--text); font-family: 'DM Mono', monospace;
+  font-size: 20px; font-weight: 400; padding: 13px 60px 13px 42px; outline: none;
+  transition: border-color 0.25s, box-shadow 0.25s; -moz-appearance: textfield;
+}
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+input[type="number"]:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(201,168,76,0.08); }
+input[type="number"]::placeholder { color: #2e2e2e; }
+
+.quick-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+.qbtn {
+  font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted);
+  background: var(--surface2); border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 2px; padding: 5px 10px; cursor: pointer; transition: all 0.18s; white-space: nowrap;
+}
+.qbtn:hover { color: var(--text); border-color: rgba(201,168,76,0.3); }
+.qbtn.active { color: var(--bg); background: var(--gold); border-color: var(--gold); }
+
+/* Slider */
+.slider-val { font-family: 'DM Mono', monospace; font-size: 22px; font-weight: 400; color: var(--text); margin-bottom: 8px; }
+.slider-val span { color: var(--gold); }
+.slider-track { position: relative; height: 36px; display: flex; align-items: center; }
+input[type="range"] {
+  -webkit-appearance: none; appearance: none; width: 100%; height: 3px; border-radius: 2px;
+  outline: none; cursor: pointer;
+  background: linear-gradient(to right, var(--gold) 0%, var(--gold) var(--pct, 0%), rgba(255,255,255,0.1) var(--pct,0%), rgba(255,255,255,0.1) 100%);
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%;
+  background: var(--gold); border: 2px solid var(--bg); box-shadow: 0 0 0 2px var(--gold);
+  cursor: pointer; transition: transform 0.15s;
+}
+input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+input[type="range"]::-moz-range-thumb {
+  width: 18px; height: 18px; border-radius: 50%; background: var(--gold);
+  border: 2px solid var(--bg); cursor: pointer;
+}
+.slider-labels { display: flex; justify-content: space-between; font-family: 'DM Mono', monospace; font-size: 9px; color: var(--muted); margin-top: 4px; letter-spacing: 0.08em; }
+
+/* Calc button */
+.calc-btn {
+  width: 100%; margin-top: 28px; background: linear-gradient(135deg, #C9A84C, #A8892E);
+  color: #0B0D0F; font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.2em;
+  text-transform: uppercase; font-weight: 500; border: none; border-radius: 3px;
+  padding: 17px; cursor: pointer; transition: opacity 0.2s, transform 0.15s;
+}
+.calc-btn:hover { opacity: 0.88; transform: translateY(-1px); }
+.calc-btn:active { transform: translateY(0); }
+
+/* Results */
+.results { margin-top: 28px; display: none; }
+.results.visible { display: block; animation: fadeUp 0.5s ease both; }
+.results-header {
+  font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.2em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 16px;
+  display: flex; align-items: center; gap: 10px;
+}
+.results-header::after { content:''; flex:1; height:1px; background: rgba(255,255,255,0.06); }
+.result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.result-card { background: var(--surface2); border: 1px solid rgba(255,255,255,0.05); border-radius: 3px; padding: 20px; }
+.result-card.highlight { border-color: rgba(76,175,125,0.3); background: var(--green-dim); grid-column: span 2; }
+.result-card.gold-card { border-color: var(--border); background: var(--gold-dim); }
+.result-label { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+.result-value { font-family: 'Playfair Display', serif; font-size: clamp(20px,4vw,28px); font-weight: 700; letter-spacing: -0.02em; line-height: 1; }
+.result-card.highlight .result-value { color: var(--green); }
+.result-card.gold-card .result-value { color: var(--gold-light); }
+.result-card:not(.highlight):not(.gold-card) .result-value { color: var(--text); }
+.result-sub { font-size: 11px; color: var(--muted); margin-top: 6px; font-weight: 300; }
+
+.income-box {
+  margin-top: 12px; padding: 14px 18px;
+  border: 1px solid var(--border); border-radius: 3px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.income-box.gross { background: linear-gradient(135deg, rgba(201,168,76,0.08), rgba(201,168,76,0.03)); border-color: var(--border); }
+.income-box.tax   { background: linear-gradient(135deg, rgba(180,60,60,0.12), rgba(180,60,60,0.05)); border-color: var(--red-border); margin-top: 8px; }
+.income-box .ibl { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; }
+.income-box.gross .ibl { color: var(--gold); }
+.income-box.tax   .ibl { color: var(--red); }
+.income-box .ibr { font-family: 'Playfair Display', serif; font-size: 20px; }
+.income-box.gross .ibr { color: var(--gold-light); }
+.income-box.tax   .ibr { color: #F0A0A0; }
+
+.breakdown { margin-top: 16px; background: var(--surface2); border: 1px solid rgba(255,255,255,0.04); border-radius: 3px; overflow: hidden; }
+.breakdown-row { display: flex; justify-content: space-between; align-items: center; padding: 11px 16px; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 13px; }
+.breakdown-row:last-child { border-bottom: none; }
+.breakdown-row .bl { color: var(--muted); font-weight: 300; }
+.breakdown-row .br { font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500; color: var(--text); }
+.note { margin-top: 14px; font-size: 11px; color: var(--muted); line-height: 1.6; font-style: italic; text-align: center; }
+
+@media (max-width: 500px) {
+  .card { padding: 22px 16px; }
+  .result-grid { grid-template-columns: 1fr; }
+  .result-card.highlight { grid-column: span 1; }
+  .qbtn { font-size: 10px; padding: 4px 8px; }
+}
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <div class="badge">AWC Yield Calculator</div>
+    <h1>Build Your<br><span>Dividend Engine</span></h1>
+    <p class="subtitle">Compound growth projection with monthly reinvestment</p>
+  </div>
+
+  <div class="card">
+
+    <!-- INITIAL CAPITAL -->
+    <div class="field-block">
+      <div class="label-row">
+        <span class="field-label">Initial Capital</span>
+        <button class="reset-btn" onclick="resetInitial()">↺ Reset</button>
+      </div>
+      <div class="input-wrap">
+        <span class="prefix">$</span>
+        <input type="number" id="initial" placeholder="0" min="0" step="1000" oninput="clearActiveBtns('initial-btns')">
+        <span class="suffix">USD</span>
+      </div>
+      <div class="quick-btns" id="initial-btns">
+        <button class="qbtn" onclick="pickVal('initial','initial-btns',1000,this)">1K</button>
+        <button class="qbtn" onclick="pickVal('initial','initial-btns',2000,this)">2K</button>
+        <button class="qbtn" onclick="pickVal('initial','initial-btns',5000,this)">5K</button>
+        <button class="qbtn" onclick="pickVal('initial','initial-btns',10000,this)">10K</button>
+        <button class="qbtn" onclick="pickVal('initial','initial-btns',50000,this)">50K</button>
+        <button class="qbtn" onclick="pickVal('initial','initial-btns',100000,this)">100K</button>
+        <button class="qbtn" onclick="pickVal('initial','initial-btns',200000,this)">200K</button>
+        <button class="qbtn" onclick="pickVal('initial','initial-btns',500000,this)">500K</button>
+        <button class="qbtn" onclick="pickVal('initial','initial-btns',1000000,this)">1M</button>
+        <button class="qbtn" onclick="pickVal('initial','initial-btns',2000000,this)">2M</button>
+      </div>
+    </div>
+
+    <!-- MONTHLY CONTRIBUTION -->
+    <div class="field-block">
+      <div class="label-row">
+        <span class="field-label">Monthly Contribution</span>
+        <button class="reset-btn" onclick="resetMonthly()">↺ Reset</button>
+      </div>
+      <div class="input-wrap">
+        <span class="prefix">$</span>
+        <input type="number" id="monthly" placeholder="0" min="0" step="100" oninput="clearActiveBtns('monthly-btns')">
+        <span class="suffix">USD</span>
+      </div>
+      <div class="quick-btns" id="monthly-btns">
+        <button class="qbtn" onclick="pickVal('monthly','monthly-btns',500,this)">500</button>
+        <button class="qbtn" onclick="pickVal('monthly','monthly-btns',1000,this)">1K</button>
+        <button class="qbtn" onclick="pickVal('monthly','monthly-btns',2000,this)">2K</button>
+        <button class="qbtn" onclick="pickVal('monthly','monthly-btns',3000,this)">3K</button>
+        <button class="qbtn" onclick="pickVal('monthly','monthly-btns',4000,this)">4K</button>
+        <button class="qbtn" onclick="pickVal('monthly','monthly-btns',5000,this)">5K</button>
+        <button class="qbtn" onclick="pickVal('monthly','monthly-btns',6000,this)">6K</button>
+        <button class="qbtn" onclick="pickVal('monthly','monthly-btns',7000,this)">7K</button>
+        <button class="qbtn" onclick="pickVal('monthly','monthly-btns',8000,this)">8K</button>
+        <button class="qbtn" onclick="pickVal('monthly','monthly-btns',9000,this)">9K</button>
+        <button class="qbtn" onclick="pickVal('monthly','monthly-btns',10000,this)">10K</button>
+        <button class="qbtn" onclick="pickVal('monthly','monthly-btns',15000,this)">15K</button>
+        <button class="qbtn" onclick="pickVal('monthly','monthly-btns',20000,this)">20K</button>
+      </div>
+    </div>
+
+    <!-- ANNUAL DIVIDEND YIELD -->
+    <div class="field-block">
+      <div class="label-row">
+        <span class="field-label">Annual Dividend Yield</span>
+        <button class="reset-btn" onclick="resetYield()">↺ Reset</button>
+      </div>
+      <div class="slider-val"><span id="yield-display">6.0</span>%</div>
+      <div class="slider-track">
+        <input type="range" id="yield-slider" min="0" max="30" step="0.5" value="6"
+          oninput="onYieldSlider()">
+      </div>
+      <div class="slider-labels">
+        <span>0%</span><span>7.5%</span><span>15%</span><span>22.5%</span><span>30%</span>
+      </div>
+      <div class="quick-btns" style="margin-top:12px;" id="yield-btns">
+        <button class="qbtn" onclick="pickYield(5,this)">5%</button>
+        <button class="qbtn" onclick="pickYield(10,this)">10%</button>
+        <button class="qbtn" onclick="pickYield(15,this)">15%</button>
+        <button class="qbtn" onclick="pickYield(20,this)">20%</button>
+      </div>
+    </div>
+
+    <!-- INVESTMENT PERIOD -->
+    <div class="field-block">
+      <div class="label-row">
+        <span class="field-label">Investment Period</span>
+        <button class="reset-btn" onclick="resetYears()">↺ Reset</button>
+      </div>
+      <div class="slider-val"><span id="years-display">10</span> yrs</div>
+      <div class="slider-track">
+        <input type="range" id="years-slider" min="1" max="100" step="1" value="10"
+          oninput="onYearsSlider()">
+      </div>
+      <div class="slider-labels">
+        <span>1</span><span>25</span><span>50</span><span>75</span><span>100 yrs</span>
+      </div>
+      <div class="quick-btns" style="margin-top:12px;" id="years-btns">
+        <button class="qbtn" onclick="pickYears(5,this)">5</button>
+        <button class="qbtn" onclick="pickYears(10,this)">10</button>
+        <button class="qbtn" onclick="pickYears(15,this)">15</button>
+        <button class="qbtn" onclick="pickYears(20,this)">20</button>
+        <button class="qbtn" onclick="pickYears(25,this)">25</button>
+        <button class="qbtn" onclick="pickYears(30,this)">30</button>
+        <button class="qbtn" onclick="pickYears(35,this)">35</button>
+        <button class="qbtn" onclick="pickYears(40,this)">40</button>
+        <button class="qbtn" onclick="pickYears(45,this)">45</button>
+        <button class="qbtn" onclick="pickYears(50,this)">50</button>
+        <button class="qbtn" onclick="pickYears(55,this)">55</button>
+        <button class="qbtn" onclick="pickYears(60,this)">60</button>
+        <button class="qbtn" onclick="pickYears(65,this)">65</button>
+        <button class="qbtn" onclick="pickYears(70,this)">70</button>
+        <button class="qbtn" onclick="pickYears(75,this)">75</button>
+        <button class="qbtn" onclick="pickYears(80,this)">80</button>
+      </div>
+    </div>
+
+    <button class="calc-btn" onclick="calculate()">Calculate Projection</button>
+
+    <!-- RESULTS -->
+    <div class="results" id="results">
+      <div class="results-header" style="margin-top:28px;">Projection Summary</div>
+      <div class="result-grid">
+        <div class="result-card gold-card">
+          <div class="result-label">Total Capital Invested</div>
+          <div class="result-value" id="res-capital">—</div>
+          <div class="result-sub" id="res-capital-sub"></div>
+        </div>
+        <div class="result-card">
+          <div class="result-label">Dividends Earned</div>
+          <div class="result-value" id="res-dividends">—</div>
+          <div class="result-sub" id="res-div-sub"></div>
+        </div>
+        <div class="result-card highlight">
+          <div class="result-label">Total Portfolio Value (Capital + Gains)</div>
+          <div class="result-value" id="res-total">—</div>
+          <div class="result-sub" id="res-total-sub"></div>
+        </div>
+      </div>
+
+      <div class="income-box gross">
+        <span class="ibl">Monthly Dividend Income (at end)</span>
+        <span class="ibr" id="res-monthly-div">—</span>
+      </div>
+      <div class="income-box tax">
+        <span class="ibl">After 30% Withholding Tax</span>
+        <span class="ibr" id="res-monthly-tax">—</span>
+      </div>
+
+      <div class="breakdown">
+        <div class="breakdown-row"><span class="bl">Initial capital</span><span class="br" id="br-initial">—</span></div>
+        <div class="breakdown-row"><span class="bl">Monthly contribution</span><span class="br" id="br-monthly">—</span></div>
+        <div class="breakdown-row"><span class="bl">Annual dividend yield</span><span class="br" id="br-yield">—</span></div>
+        <div class="breakdown-row"><span class="bl">Investment horizon</span><span class="br" id="br-years">—</span></div>
+        <div class="breakdown-row"><span class="bl">Total amount invested</span><span class="br" id="br-contrib">—</span></div>
+        <div class="breakdown-row"><span class="bl">Reinvested dividends (compounded)</span><span class="br" id="br-reinvested">—</span></div>
+      </div>
+      <p class="note">Assumes dividends are reinvested monthly (DRIP). Figures are pre-tax estimates unless stated. Past performance does not guarantee future returns.</p>
+    </div>
+
+  </div>
+</div>
+
+<script>
+/* ── Helpers ── */
+function fmt(n) {
+  return '$' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+function setFill(id, min, max) {
+  var el = document.getElementById(id);
+  var pct = ((parseFloat(el.value) - min) / (max - min)) * 100;
+  el.style.setProperty('--pct', pct + '%');
+}
+function clearActiveBtns(groupId) {
+  document.querySelectorAll('#' + groupId + ' .qbtn').forEach(function(b){ b.classList.remove('active'); });
+}
+
+/* ── Number field quick-pick ── */
+function pickVal(fieldId, groupId, value, btn) {
+  document.getElementById(fieldId).value = value;
+  clearActiveBtns(groupId);
+  btn.classList.add('active');
+}
+
+/* ── Yield slider ── */
+function onYieldSlider() {
+  var v = parseFloat(document.getElementById('yield-slider').value);
+  document.getElementById('yield-display').textContent = v.toFixed(1);
+  setFill('yield-slider', 0, 30);
+  clearActiveBtns('yield-btns');
+}
+function pickYield(val, btn) {
+  document.getElementById('yield-slider').value = val;
+  document.getElementById('yield-display').textContent = val.toFixed(1);
+  setFill('yield-slider', 0, 30);
+  clearActiveBtns('yield-btns');
+  btn.classList.add('active');
+}
+function resetYield() {
+  document.getElementById('yield-slider').value = 6;
+  document.getElementById('yield-display').textContent = '6.0';
+  setFill('yield-slider', 0, 30);
+  clearActiveBtns('yield-btns');
+}
+
+/* ── Years slider ── */
+function onYearsSlider() {
+  var v = parseInt(document.getElementById('years-slider').value);
+  document.getElementById('years-display').textContent = v;
+  setFill('years-slider', 1, 100);
+  clearActiveBtns('years-btns');
+}
+function pickYears(val, btn) {
+  document.getElementById('years-slider').value = val;
+  document.getElementById('years-display').textContent = val;
+  setFill('years-slider', 1, 100);
+  clearActiveBtns('years-btns');
+  btn.classList.add('active');
+}
+function resetYears() {
+  document.getElementById('years-slider').value = 10;
+  document.getElementById('years-display').textContent = '10';
+  setFill('years-slider', 1, 100);
+  clearActiveBtns('years-btns');
+}
+
+/* ── Field resets ── */
+function resetInitial() {
+  document.getElementById('initial').value = '';
+  clearActiveBtns('initial-btns');
+}
+function resetMonthly() {
+  document.getElementById('monthly').value = '';
+  clearActiveBtns('monthly-btns');
+}
+
+/* ── Init sliders on load ── */
+window.addEventListener('DOMContentLoaded', function() {
+  setFill('yield-slider', 0, 30);
+  setFill('years-slider', 1, 100);
+});
+
+/* ── Main calculation ── */
+function calculate() {
+  var initial = parseFloat(document.getElementById('initial').value) || 0;
+  var monthly = parseFloat(document.getElementById('monthly').value) || 0;
+  var ay      = parseFloat(document.getElementById('yield-slider').value);
+  var years   = parseInt(document.getElementById('years-slider').value);
+
+  if (ay <= 0)                      { alert('Please set a dividend yield above 0%.'); return; }
+  if (years <= 0)                   { alert('Please set an investment period.'); return; }
+  if (initial <= 0 && monthly <= 0) { alert('Please enter an initial capital or monthly contribution.'); return; }
+
+  var monthlyRate  = (ay / 100) / 12;
+  var months       = years * 12;
+  var fvInitial    = initial * Math.pow(1 + monthlyRate, months);
+  var fvMonthly    = monthly > 0 ? monthly * ((Math.pow(1 + monthlyRate, months) - 1) / monthlyRate) : 0;
+  var portfolio    = fvInitial + fvMonthly;
+  var totalInvested = initial + monthly * months;
+  var dividends    = portfolio - totalInvested;
+  var monthlyIncome = portfolio * monthlyRate;
+  var afterTax     = monthlyIncome * 0.70;
+
+  document.getElementById('res-capital').textContent = fmt(totalInvested);
+  var parts = [];
+  if (initial > 0) parts.push('$' + initial.toLocaleString() + ' initial');
+  if (monthly > 0) parts.push('$' + monthly.toLocaleString() + '/mo x ' + months + ' months');
+  document.getElementById('res-capital-sub').textContent = parts.join(' + ');
+
+  document.getElementById('res-dividends').textContent = fmt(dividends);
+  document.getElementById('res-div-sub').textContent   = ((dividends / totalInvested) * 100).toFixed(1) + '% return on invested';
+
+  document.getElementById('res-total').textContent     = fmt(portfolio);
+  document.getElementById('res-total-sub').textContent = ((portfolio / totalInvested - 1) * 100).toFixed(1) + '% total growth over ' + years + ' year' + (years > 1 ? 's' : '');
+
+  document.getElementById('res-monthly-div').textContent = fmt(monthlyIncome) + '/mo';
+  document.getElementById('res-monthly-tax').textContent = fmt(afterTax) + '/mo';
+
+  document.getElementById('br-initial').textContent    = fmt(initial);
+  document.getElementById('br-monthly').textContent    = monthly > 0 ? fmt(monthly) + '/mo' : '—';
+  document.getElementById('br-yield').textContent      = ay.toFixed(1) + '% p.a.';
+  document.getElementById('br-years').textContent      = years + ' year' + (years > 1 ? 's' : '') + ' (' + months + ' months)';
+  document.getElementById('br-contrib').textContent    = fmt(totalInvested);
+  document.getElementById('br-reinvested').textContent = fmt(dividends);
+
+  var r = document.getElementById('results');
+  r.classList.remove('visible');
+  void r.offsetWidth;
+  r.classList.add('visible');
+  r.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+document.addEventListener('keydown', function(e) { if (e.key === 'Enter') calculate(); });
+</script>
+</body>
+</html>
